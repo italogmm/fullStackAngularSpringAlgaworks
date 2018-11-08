@@ -1,20 +1,28 @@
 package com.example.algamoney.api.resource;
 
 import com.example.algamoney.api.event.RecursoCriadoEvent;
+import com.example.algamoney.api.exceptionhandler.AlgamoneyExceptionHandler;
 import com.example.algamoney.api.model.Categoria;
 import com.example.algamoney.api.model.Lancamento;
 import com.example.algamoney.api.model.Pessoa;
 import com.example.algamoney.api.repository.LancamentoRepository;
 import com.example.algamoney.api.repository.PessoaRepository;
+import com.example.algamoney.api.service.LancamentoService;
 import com.example.algamoney.api.service.PessoaService;
+import com.example.algamoney.api.service.exception.PessoaInexistenteOuInativaException;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -25,19 +33,29 @@ public class LancamentoResource {
 	private LancamentoRepository lancamentoRepository;
 
 	@Autowired
+	private LancamentoService lancamentoService;
+
+	@Autowired
 	private ApplicationEventPublisher publisher;
 
 	@Autowired
-	private PessoaService pessoaService;
+	private MessageSource messageSource;
 
 	@PostMapping
 	public ResponseEntity<Lancamento> criar(@RequestBody @Valid Lancamento lancamento, HttpServletResponse response){
-
-		Lancamento lancamentoSalvo = lancamentoRepository.save(lancamento);
+		Lancamento lancamentoSalvo = lancamentoService.salvar(lancamento);
 		publisher.publishEvent(new RecursoCriadoEvent(this, response, lancamentoSalvo.getCodigo()));
-
 		return ResponseEntity.status(HttpStatus.CREATED).body(lancamentoSalvo);
 	}
+
+	@ExceptionHandler({PessoaInexistenteOuInativaException.class})
+	public ResponseEntity<Object> handlePessoaInexistenteOuInativaException(PessoaInexistenteOuInativaException ex) {
+		String mensagemUsuario = messageSource.getMessage("pessoa.inexistente-ou-inativa", null, LocaleContextHolder.getLocale());
+		String mensagemDesenvolvedor = ex.toString();
+		List<AlgamoneyExceptionHandler.Erro> erros = Arrays.asList(new AlgamoneyExceptionHandler.Erro(mensagemUsuario, mensagemDesenvolvedor));
+		return ResponseEntity.badRequest().body(erros);
+	}
+
 
 	@GetMapping("/{codigo}")
 	public ResponseEntity<Lancamento> buscarPeloCodigo(@PathVariable Long codigo) {
@@ -50,5 +68,4 @@ public class LancamentoResource {
 		List<Lancamento> lancamentos = lancamentoRepository.findAll();
 		return lancamentos;
 	}
-
 }
