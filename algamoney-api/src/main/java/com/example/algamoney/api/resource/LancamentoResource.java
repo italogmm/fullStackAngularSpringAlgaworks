@@ -7,6 +7,7 @@ import com.example.algamoney.api.model.Lancamento;
 import com.example.algamoney.api.model.Pessoa;
 import com.example.algamoney.api.repository.LancamentoRepository;
 import com.example.algamoney.api.repository.PessoaRepository;
+import com.example.algamoney.api.repository.filter.LancamentoFilter;
 import com.example.algamoney.api.service.LancamentoService;
 import com.example.algamoney.api.service.PessoaService;
 import com.example.algamoney.api.service.exception.PessoaInexistenteOuInativaException;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -64,8 +67,14 @@ public class LancamentoResource {
 	}
 
 	@GetMapping
-	public List<Lancamento> listar(){
-		List<Lancamento> lancamentos = lancamentoRepository.findAll();
+	public Page<Lancamento> pesquisar(LancamentoFilter lancamentoFilter, Pageable pageable){
+		Page<Lancamento> lancamentos = lancamentoRepository.filtrar(lancamentoFilter, pageable);
 		return lancamentos;
 	}
+
+    @DeleteMapping("/{codigo}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void remover(@PathVariable Long codigo){
+        lancamentoRepository.delete(codigo);
+    }
 }
